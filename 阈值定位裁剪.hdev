@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="18.11.1.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>list_files ('1_Top', 'directories', Files)</l>
+<l>dev_set_draw ('margin')</l>
+<l>count_seconds (start)</l>
+<l>for i:=0 to |Files|-1 by 1</l>
+<l>    list_image_files (Files[i], 'default', [], ImageFiles)</l>
+<l>    read_image (Image, ImageFiles[1])</l>
+<l>    cfa_to_rgb (Image, RGBImage, 'bayer_bg', 'bilinear')</l>
+<c>    </c>
+<l>    decompose3 (RGBImage, r, g, b)</l>
+<l>    trans_from_rgb (r, g, b, h, s, v, 'hsv')</l>
+<l>    binary_threshold (v, Region, 'max_separability', 'light', UsedThreshold)</l>
+<c>   </c>
+<l>*     opening_rectangle1 (Region, Region, 10, 10)</l>
+<l>    connection (Region, ConnectedRegions)</l>
+<l>    select_shape (ConnectedRegions, SelectedRegions, ['area','height'], 'and', [350000,600], [500000,1000])</l>
+<l>    shape_trans (SelectedRegions, RegionTrans, 'rectangle2')</l>
+<l>    count_obj (RegionTrans, Number)</l>
+<l>    for Index := 1 to Number by 1</l>
+<l>       select_obj (RegionTrans, ObjectSelected,Index)</l>
+<l>       reduce_domain (RGBImage, ObjectSelected, ImageReduced)</l>
+<l>       crop_domain (ImageReduced, ImagePart)</l>
+<l>       rorate_cutImg (ImagePart, outImg)</l>
+<l>       file_exists ('Images', FileExists)</l>
+<l>       if (FileExists!=1)</l>
+<l>           make_dir ('Images')  </l>
+<l>       endif</l>
+<c>       </c>
+<l>       write_image (outImg, 'bmp', 245, 'Images/'+i+'_'+Index+'.bmp')</l>
+<l>    endfor</l>
+<l>endfor</l>
+<l>count_seconds (end)</l>
+<l>elapsed:=(end-start)</l>
+<c></c>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="rorate_cut">
+<interface>
+<io>
+<par name="srcImg" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="outImg" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c></c>
+<l>threshold (srcImg, Region, 128, 240)</l>
+<c> </c>
+<l>dev_set_draw ('margin')</l>
+<c>*计算区域斜率</c>
+<l>orientation_region (Region, Phi)</l>
+<c>*获取没有旋转的矩形</c>
+<l>area_center (Region, NULL, Row, Column)</l>
+<c>*创建变换模型</c>
+<l>vector_angle_to_rigid (Row, Column, Phi, Row, Column, rad(90), HomMat2D)</l>
+<c>*区域变换</c>
+<l>affine_trans_region (Region, RegionAffineTrans, HomMat2D, 'nearest_neighbor')</l>
+<l>affine_trans_image (srcImg, ImageAffineTrans, HomMat2D, 'constant', 'false')</l>
+<l>median_image (ImageAffineTrans, ImageMedian, 'circle', 3, 'mirrored')</l>
+<l>threshold (ImageAffineTrans, Region1, 50, 240)</l>
+<l>closing_circle (Region1, RegionClosing, 4.5)</l>
+<l>erosion_rectangle1 (RegionClosing, RegionErosion, 20, 20)</l>
+<l>shape_trans (RegionErosion, RegionTrans, 'rectangle1')</l>
+<l>reduce_domain (ImageAffineTrans, RegionTrans, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImagePart)</l>
+<l>dev_clear_window ()</l>
+<l>dev_set_color ('green')</l>
+<l>dev_display (Region)</l>
+<l>dev_set_color ('red')</l>
+<l>dev_display (RegionAffineTrans)</l>
+<l>return ()</l>
+</body>
+<docu id="rorate_cut">
+<parameters>
+<parameter id="outImg"/>
+<parameter id="srcImg"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="rorate_cutImg">
+<interface>
+<io>
+<par name="srcImg" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="outImg" base_type="iconic" dimension="0"/>
+</oo>
+</interface>
+<body>
+<l>decompose3 (srcImg, r, g, b)</l>
+<l>trans_from_rgb (r, g, b, h, s, v, 'hsv')</l>
+<l>median_image (v, v, 'circle', 3, 'mirrored')</l>
+<l>dev_set_draw ('fill')</l>
+<l>threshold (v, whiteRegion, 80, 255)</l>
+<c> </c>
+<c>*计算区域斜率</c>
+<l>orientation_region (whiteRegion, Phi)</l>
+<c>*获取没有旋转的矩形</c>
+<l>area_center (whiteRegion, NULL, Row, Column)</l>
+<c>*创建变换模型</c>
+<l>vector_angle_to_rigid (Row, Column, Phi, Row, Column, rad(90), HomMat2D)</l>
+<c>*区域变换</c>
+<l>* affine_trans_region (Region, RegionAffineTrans, HomMat2D, 'nearest_neighbor')</l>
+<l>affine_trans_image (v, ImageAffineTransV, HomMat2D, 'constant', 'false')</l>
+<l>affine_trans_image (srcImg, ImageAffineTransSrc, HomMat2D, 'constant', 'false')</l>
+<c></c>
+<c></c>
+<l>median_image (ImageAffineTransV, ImageMedian, 'circle', 3, 'mirrored')</l>
+<l>binary_threshold (ImageAffineTransV, whiteRegion1, 'max_separability', 'light', UsedThreshold)</l>
+<c> </c>
+<c></c>
+<l>delfin (ImageAffineTransV, FinRegion)</l>
+<l>dev_set_draw ('margin')</l>
+<l>difference (whiteRegion1, FinRegion, RegionDifference)</l>
+<l>shape_trans (RegionDifference, RegionTrans, 'rectangle1')</l>
+<c></c>
+<l>smallest_rectangle1 (RegionTrans, Row1, Column1, Row2, Column2)</l>
+<l>gen_rectangle1 (Rectangle, Row1+15, Column1+15, Row2-15, Column2-15)</l>
+<c></c>
+<l>* smallest_rectangle2 (RegionTrans, Row, Column, Phi, Length1, Length2)</l>
+<l>* gen_rectangle2_contour_xld (Rectangle, Row, Column, Phi, Length1, Length2)</l>
+<l>* get_contour_xld (Rectangle, Row3, Col)</l>
+<c></c>
+<l>reduce_domain (ImageAffineTransSrc, Rectangle, ImageReduced)</l>
+<l>crop_domain (ImageReduced, outImg)</l>
+<l>dev_clear_window ()</l>
+<l>dev_set_color ('green')</l>
+<l>dev_display (whiteRegion1)</l>
+<l>dev_set_color ('red')</l>
+<l>dev_display (ImageAffineTransV)</l>
+<l>return ()</l>
+<l>return ()</l>
+</body>
+<docu id="rorate_cutImg">
+<parameters>
+<parameter id="outImg">
+<sem_type>image</sem_type>
+</parameter>
+<parameter id="srcImg">
+<sem_type>image</sem_type>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="delfin">
+<interface>
+<io>
+<par name="srcImg" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="FinRegion" base_type="iconic" dimension="0"/>
+</oo>
+</interface>
+<body>
+<l>dev_set_draw ('fill')</l>
+<l>binary_threshold (srcImg, foreground, 'max_separability', 'light', UsedThreshold)</l>
+<c></c>
+<l>threshold (srcImg, allRegion, 0, 255)</l>
+<l>difference (allRegion, foreground, Background)</l>
+<c> </c>
+<c>*闭运算，为什么闭运算能把那个“翼”形去掉，闭运算是先膨胀，后腐蚀。所谓膨胀就是把黑色边缘部分用白色替换，</c>
+<c>*当这个用作运算的卷积核足够大，白色就把那个黑色的区域整个覆盖掉了</c>
+<c>*腐蚀是为了把原来的边缘还原</c>
+<l>closing_rectangle1 (Background, ClosedBackground, 30, 30)</l>
+<c></c>
+<c>*比较两幅图像，选中两张图像中不相同的区域</c>
+<l>difference (ClosedBackground, Background, RegionDifference)</l>
+<c>*开运算</c>
+<l>opening_rectangle1 (RegionDifference, FinRegion, 1.5, 1.5)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="delfin">
+<parameters>
+<parameter id="FinRegion">
+<sem_type>region</sem_type>
+</parameter>
+<parameter id="srcImg">
+<sem_type>image</sem_type>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>
